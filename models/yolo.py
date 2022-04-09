@@ -96,6 +96,7 @@ class Detect(nn.Module):
         for k, (cls_conv, reg_conv, stride_this_level, x) in enumerate(
             zip(self.cls_convs, self.reg_convs, self.stride, x)
         ):
+            tmp_device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
             x = self.stems[k](x)
             cls_x = x
             reg_x = x
@@ -106,17 +107,25 @@ class Detect(nn.Module):
             reg_feat = reg_conv(reg_x)
             reg_output = self.reg_preds[k](reg_feat)
             obj_output = self.obj_preds[k](reg_feat)
-
             # ipdb.set_trace()
-            output = torch.cat([reg_output, obj_output, cls_output], 1)
-            bs, _, ny, nx = output.shape
-            output = output.view(bs, self.na, self.no, ny, nx).permute(0, 1, 3, 4, 2).contiguous()
+
+            bs, _, ny, nx = reg_output.shape
+            to_type = reg_output.type()
+            reg_output = reg_output.type(to_type)
+            obj_output = obj_output.type(to_type)
+            cls_output = cls_output.type(to_type)
+
+            reg_output = reg_output.view(bs, self.na, -1, ny, nx).permute(0, 1, 3, 4, 2).contiguous()
+            obj_output = obj_output.view(bs, self.na, -1, ny, nx).permute(0, 1, 3, 4, 2).contiguous()
+            cls_output = cls_output.view(bs, self.na, -1, ny, nx).permute(0, 1, 3, 4, 2).contiguous()
+
+            output = torch.cat([reg_output, obj_output, cls_output], -1)
 
             if not self.training:
 
                 if self.grid[k].shape[2:4] != output.shape[2:4]:
                     self.grid[k] = self._make_grid(nx, ny).to(output.device)
-
+                ipdb.set_trace()
                 y = output.sigmoid()
                 y[..., 0:2] = (output[..., 0:2] * 2. - 0.5 + self.grid[k].to(output.device)) * self.stride[k]
                 y[..., 2:4] = (output[..., 2:4] * 2) ** 2 * self.anchor_grid[k]
@@ -222,7 +231,17 @@ class Model(nn.Module):
             check_anchor_order(m)
             self.stride = m.stride
             # self._initialize_biases()  # only run once
+
+            for module in m.stems:
+                nn.init.kaiming_normal_(module.conv.weight, mode='fan_out', nonlinearity='relu')
+            # ipdb.set_trace()
+
+            for module in m.modules():
+                if module == nn.Conv2d:
+                    nn.init.kaiming_normal_(module.conv.weight, mode='fan_out', nonlinearity='relu')
+
             self.initialize_biases()  # decoupled head
+
             # print('Strides: %s' % m.stride.tolist())
 
         # Init weights, biases
