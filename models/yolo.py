@@ -107,7 +107,6 @@ class Detect(nn.Module):
             reg_feat = reg_conv(reg_x)
             reg_output = self.reg_preds[k](reg_feat)
             obj_output = self.obj_preds[k](reg_feat)
-            # ipdb.set_trace()
 
             bs, _, ny, nx = reg_output.shape
             to_type = reg_output.type()
@@ -125,7 +124,6 @@ class Detect(nn.Module):
 
                 if self.grid[k].shape[2:4] != output.shape[2:4]:
                     self.grid[k] = self._make_grid(nx, ny).to(output.device)
-                ipdb.set_trace()
                 y = output.sigmoid()
                 y[..., 0:2] = (output[..., 0:2] * 2. - 0.5 + self.grid[k].to(output.device)) * self.stride[k]
                 y[..., 2:4] = (output[..., 2:4] * 2) ** 2 * self.anchor_grid[k]
@@ -234,7 +232,6 @@ class Model(nn.Module):
 
             for module in m.stems:
                 nn.init.kaiming_normal_(module.conv.weight, mode='fan_out', nonlinearity='relu')
-            # ipdb.set_trace()
 
             for module in m.modules():
                 if module == nn.Conv2d:
