@@ -87,7 +87,6 @@ class Detect(nn.Module):
         self.training |= self.export
 
         # ------- decoupled head  ----------------- #
-
         outputs = []
         origin_preds = []
         x_shifts = []
@@ -124,23 +123,11 @@ class Detect(nn.Module):
 
                 if self.grid[k].shape[2:4] != output.shape[2:4]:
                     self.grid[k] = self._make_grid(nx, ny).to(output.device)
-                y = output.sigmoid()
+
+                y = torch.cat([reg_output, obj_output.sigmoid(), cls_output.sigmoid()], -1)
                 y[..., 0:2] = (output[..., 0:2] * 2. - 0.5 + self.grid[k].to(output.device)) * self.stride[k]
                 y[..., 2:4] = (output[..., 2:4] * 2) ** 2 * self.anchor_grid[k]
                 z.append(y.view(bs, -1, self.no))
-
-            # if self.training:
-            #     output = torch.cat([reg_output, obj_output, cls_output], 1)
-            #
-            #     output, grid = self.get_output_and_grid(output, k, stride_this_level, x[0].dtype)
-            #
-            #     x_shifts.append(grid[:, :, 0])
-            #     y_shifts.append(grid[:, :, 1])
-            #     expanded_strides.append(
-            #         torch.zeros(1, grid.shape[1]).fill_(stride_this_level).type_as(x[0])
-            #     )
-            # else:
-            #     output = torch.cat([reg_output, obj_output.sigmoid(), cls_output.sigmoid()], 1)
 
             outputs.append(output)
 
@@ -228,16 +215,17 @@ class Model(nn.Module):
             m.anchors /= m.stride.view(-1, 1, 1).to(tmp_device)
             check_anchor_order(m)
             self.stride = m.stride
-            # self._initialize_biases()  # only run once
+            self._initialize_biases()  # only run once
 
-            for module in m.stems:
-                nn.init.kaiming_normal_(module.conv.weight, mode='fan_out', nonlinearity='relu')
+            # ----- decoupled head ---------------#
 
             for module in m.modules():
                 if module == nn.Conv2d:
                     nn.init.kaiming_normal_(module.conv.weight, mode='fan_out', nonlinearity='relu')
 
             self.initialize_biases()  # decoupled head
+
+            # ----- decoupled head ---------------#
 
             # print('Strides: %s' % m.stride.tolist())
 
