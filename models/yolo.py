@@ -215,13 +215,13 @@ class Model(nn.Module):
             m.anchors /= m.stride.view(-1, 1, 1).to(tmp_device)
             check_anchor_order(m)
             self.stride = m.stride
-            self._initialize_biases()  # only run once
+            # self._initialize_biases()  # only run once
 
             # ----- decoupled head ---------------#
 
-            # for module in m.modules():
-            #     if module == nn.Conv2d:
-            #         nn.init.kaiming_normal_(module.conv.weight, mode='fan_out', nonlinearity='relu')
+            for module in m.modules():
+                if module == nn.Conv2d:
+                    nn.init.kaiming_normal_(module.conv.weight, mode='fan_out', nonlinearity='relu')
 
             self.initialize_biases()  # decoupled head
 
