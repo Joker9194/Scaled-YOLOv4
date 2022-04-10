@@ -219,9 +219,9 @@ class Model(nn.Module):
 
             # ----- decoupled head ---------------#
 
-            for module in m.modules():
-                if module == nn.Conv2d:
-                    nn.init.kaiming_normal_(module.conv.weight, mode='fan_out', nonlinearity='relu')
+            # for module in m.modules():
+            #     if module == nn.Conv2d:
+            #         nn.init.kaiming_normal_(module.conv.weight, mode='fan_out', nonlinearity='relu')
 
             self.initialize_biases()  # decoupled head
 

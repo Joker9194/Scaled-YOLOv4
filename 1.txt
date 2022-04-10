@@ -1,0 +1,2 @@
+nohup python train.py --batch-size 16 --data data/coco.yaml --cfg models/yolov4-p5-dehead.yaml --weights '' --resume >> yolov4-p5-dehead-pretrain.log 2>&1 &
+
